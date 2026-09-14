@@ -1,0 +1,96 @@
+<!DOCTYPE html> 
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>極簡留言板</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 30px auto; padding: 20px; }
+    input, textarea, button { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+    button:disabled { background-color: #ccc; }
+    .comment { border-bottom: 1px solid #ddd; padding: 10px 0; }
+    .comment-header { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+
+  <h2>簡單留言板</h2>
+
+  <!-- 留言輸入框 -->
+  <input type="text" id="name" placeholder="你的暱稱">
+  <textarea id="message" rows="3" placeholder="想說些什麼..."></textarea>
+  <button id="submitBtn" onclick="sendComment()">發表留言</button>
+
+  <hr>
+
+  <h3>所有留言</h3>
+  <div id="comments">載入中...</div>
+
+  <script>
+    // ⚠️ 記得把這裡替換成第三步得到的 Web 應用程式 URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxe1_rKHODnwYSj6ZZ7pDVkk6kfC6me_iZq5vNL_kGzY7VN2l2FgbsP00gWfT2_SiqwGQ/exec";
+
+    // 1. 讀取留言
+    async function loadComments() {
+      const container = document.getElementById('comments');
+      try {
+        const response = await fetch(GAS_URL);
+        const data = await response.json();
+
+        if (data.length === 0) {
+          container.innerHTML = "<p>目前還沒有留言喔！</p>";
+          return;
+        }
+
+        container.innerHTML = data.map(item => `
+          <div class="comment">
+            <div class="comment-header"><strong>${escapeHtml(item.name)}</strong> · ${item.time}</div>
+            <div>${escapeHtml(item.message)}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = "<p>無法載入留言，請重新整理頁面。</p>";
+      }
+    }
+
+    // 2. 送出留言
+    async function sendComment() {
+      const name = document.getElementById('name').value.trim() || "匿名";
+      const message = document.getElementById('message').value.trim();
+      const btn = document.getElementById('submitBtn');
+
+      if (!message) {
+        alert('請輸入留言內容！');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "傳送中...";
+
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ name, message })
+        });
+
+        document.getElementById('message').value = '';
+        await loadComments();
+      } catch (err) {
+        alert('發送失敗，請重試');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "發表留言";
+      }
+    }
+
+    // 防範 HTML 注入攻擊 (XSS)
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // 網頁開啟時載入留言
+    loadComments();
+  </script>
+</body>
+</html>
